@@ -352,7 +352,7 @@ let rec showMenuAndExecute filePath =
 
 
 let printHelp () =
-    printfn "Usage: SFDMapModifier.fsx -f <file> [options]"
+    printfn "Usage: SFD.MapModifier.fsx -f <file> [options]"
     printfn ""
     printfn "Options:"
     printfn "  -f, --file <path>       Path to the file (required)"
