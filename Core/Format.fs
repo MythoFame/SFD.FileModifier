@@ -109,7 +109,8 @@ module SfdMapCategory =
 
     let ofRaw (rawType: int) : SfdMapCategory =
         match rawType with
-        | 0 | 1 -> Versus
+        | 0
+        | 1 -> Versus
         | 2 -> Custom
         | 3 -> Campaign
         | 4 -> Survival
@@ -163,7 +164,8 @@ module SfdTag =
 
     /// "3,5,6" tolerated on read: blanks and unknown ids are preserved.
     let parseList (tags: string) : SfdTag list =
-        if String.IsNullOrEmpty tags then []
+        if String.IsNullOrEmpty tags then
+            []
         else
             tags.Split(',')
             |> Seq.choose (fun token ->
@@ -178,7 +180,8 @@ module SfdTag =
             match tag with
             | UnknownTag id ->
                 raise (
-                    SfdValidationException $"Unknown tag id {id}. Known ids are 1-7 (Adventure Map, Melee Map, Bot Support, Singleplayer, Multiplayer, Optimized For 16 Players, Customized Gameplay/Rules)."
+                    SfdValidationException
+                        $"Unknown tag id {id}. Known ids are 1-7 (Adventure Map, Melee Map, Bot Support, Singleplayer, Multiplayer, Optimized For 16 Players, Customized Gameplay/Rules)."
                 )
             | _ -> ()
 
@@ -191,7 +194,8 @@ module SfdGameModes =
     let Known = [ "Versus"; "Custom"; "Campaign"; "Survival" ]
 
     let parse (modes: string) : string list =
-        if String.IsNullOrEmpty modes then []
+        if String.IsNullOrEmpty modes then
+            []
         else
             modes.Split(',')
             |> Seq.map (fun token -> token.Trim())
@@ -203,9 +207,7 @@ module SfdGameModes =
             if not (List.exists (fun known -> String.Equals(known, mode, StringComparison.Ordinal)) Known) then
                 let knownModes = String.Join(", ", Known)
 
-                raise (
-                    SfdValidationException $"Unknown game mode '{mode}'. Known modes are {knownModes}."
-                )
+                raise (SfdValidationException $"Unknown game mode '{mode}'. Known modes are {knownModes}.")
 
     let format (modes: string list) : string = String.Join(",", modes)
 
@@ -272,9 +274,11 @@ module OfficialToken =
     /// Mirrors Superfighters Deluxe `MapInfo.CalcOfficialMap(header)`.
     let computeChars (header: string) : char[] =
         let array = "0123456789".ToCharArray()
+
         for i in 0 .. header.Length - 1 do
             let idx = i % array.Length
             array[idx] <- char (int array[idx] + int header[idx])
+
         array[0] <- '1'
         array
 
@@ -297,17 +301,31 @@ module Validation =
 
     let publishId (publishId: string) : unit =
         if String.IsNullOrEmpty publishId then
-            raise (SfdValidationException "Publish ID must be at least 10 digits long and contain only numeric characters.")
+            raise (
+                SfdValidationException "Publish ID must be at least 10 digits long and contain only numeric characters."
+            )
         elif publishId.Length < 10 then
-            raise (SfdValidationException $"Publish ID must be at least 10 digits long and contain only numeric characters. Got length {publishId.Length}.")
+            raise (
+                SfdValidationException
+                    $"Publish ID must be at least 10 digits long and contain only numeric characters. Got length {publishId.Length}."
+            )
         elif not (publishId |> Seq.forall Char.IsDigit) then
-            raise (SfdValidationException "Publish ID must be at least 10 digits long and contain only numeric characters. Non-digit characters found.")
+            raise (
+                SfdValidationException
+                    "Publish ID must be at least 10 digits long and contain only numeric characters. Non-digit characters found."
+            )
 
     let versionCode (versionCode: string) : unit =
         if String.IsNullOrEmpty versionCode then
-            raise (SfdValidationException "Version code must match 'v.<digits>(.<digits>)*' with an optional trailing letter, e.g. v.1.6.0.1.")
+            raise (
+                SfdValidationException
+                    "Version code must match 'v.<digits>(.<digits>)*' with an optional trailing letter, e.g. v.1.6.0.1."
+            )
         elif not (versionRegex.IsMatch versionCode) then
-            raise (SfdValidationException $"'{versionCode}' is not a valid version code. Expected e.g. v.1.3.7d, v.1.4.0 or v.1.6.0.1.")
+            raise (
+                SfdValidationException
+                    $"'{versionCode}' is not a valid version code. Expected e.g. v.1.3.7d, v.1.4.0 or v.1.6.0.1."
+            )
 
     /// Rejects null text and embedded null characters.
     let nullFreeText (text: string) (fieldName: string) : unit =
@@ -325,13 +343,13 @@ module Validation =
         let parseable =
             tokens.Length = 4
             && tokens
-            |> Seq.forall (fun token ->
-                System.Single.TryParse(
-                    token,
-                    System.Globalization.NumberStyles.Float,
-                    System.Globalization.CultureInfo.InvariantCulture
-                )
-                |> fst)
+               |> Seq.forall (fun token ->
+                   System.Single.TryParse(
+                       token,
+                       System.Globalization.NumberStyles.Float,
+                       System.Globalization.CultureInfo.InvariantCulture
+                   )
+                   |> fst)
 
         if not parseable then
             raise (
@@ -344,7 +362,11 @@ module Validation =
         nullFreeText text fieldName
 
         let ok =
-            System.Single.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture)
+            System.Single.TryParse(
+                text,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture
+            )
             |> fst
 
         if not ok then

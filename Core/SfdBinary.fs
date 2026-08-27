@@ -13,7 +13,10 @@ type ByteRange =
 
 module ByteRange =
 
-    let create start endInclusiveExclusive = { Start = start; End = endInclusiveExclusive }
+    let create start endInclusiveExclusive =
+        { Start = start
+          End = endInclusiveExclusive }
+
     let ofBounds (start: int) (length: int) = { Start = start; End = start + length }
 
 /// Byte-array cursor mirroring the semantics of the game's SFDBinaryReader.
@@ -38,17 +41,18 @@ type SfdBinaryReader(data: byte[], ?initialPosition: int) =
 
     member _.Remaining = data.Length - position
 
-    member _.LastRange : ByteRange = { Start = lastStart; End = lastEnd }
+    member _.LastRange: ByteRange = { Start = lastStart; End = lastEnd }
 
     member this.Skip(count: int) =
-        if count < 0 then raise (SfdFormatException $"Cannot skip a negative number of bytes ({count}).")
+        if count < 0 then
+            raise (SfdFormatException $"Cannot skip a negative number of bytes ({count}).")
+
         require count
         this.MarkElement()
         position <- position + count
         lastEnd <- position
 
-    member _.MarkElement() =
-        lastStart <- position
+    member _.MarkElement() = lastStart <- position
 
     /// Reads the next single byte.
     member this.ReadByte() =
@@ -103,7 +107,10 @@ type SfdBinaryReader(data: byte[], ?initialPosition: int) =
             let b = this.ReadByte()
             result <- result ||| ((int b &&& 0x7F) <<< shift)
 
-            if b &&& 0x80uy = 0uy then continueReading <- false else shift <- shift + 7
+            if b &&& 0x80uy = 0uy then
+                continueReading <- false
+            else
+                shift <- shift + 7
 
             if shift > 35 then
                 raise (SfdFormatException $"Malformed 7-bit encoded length at offset {lastStart}.")
@@ -161,13 +168,18 @@ type SfdBinaryReader(data: byte[], ?initialPosition: int) =
                 let lead = int data[position]
 
                 let byteLength =
-                    if lead &&& 0xF8 = 0xF0 then 4
-                    elif lead &&& 0xF0 = 0xE0 then 3
-                    elif lead &&& 0xE0 = 0xC0 then 2
-                    elif lead &&& 0x80 = 0x00 then 1
+                    if lead &&& 0xF8 = 0xF0 then
+                        4
+                    elif lead &&& 0xF0 = 0xE0 then
+                        3
+                    elif lead &&& 0xE0 = 0xC0 then
+                        2
+                    elif lead &&& 0x80 = 0x00 then
+                        1
                     else
                         raise (
-                            SfdFormatException $"Invalid UTF-8 lead byte 0x{lead:X2} at offset {position} while reading {charCount} characters."
+                            SfdFormatException
+                                $"Invalid UTF-8 lead byte 0x{lead:X2} at offset {position} while reading {charCount} characters."
                         )
 
                 require byteLength
@@ -202,15 +214,13 @@ module SfdEncode =
 
     /// Length-prefixed UTF-8 string, matching BinaryWriter.Write(string).
     let string (text: string) : byte[] =
-        let payload =
-            if isNull text then [||] else utf8 text
+        let payload = if isNull text then [||] else utf8 text
 
         Array.append (sevenBitInt payload.Length) payload
 
     /// Null-delimited UTF-8 string (trailing zero included), matching WriteStringNullDelimiter.
     let nullDelimitedString (text: string) : byte[] =
-        let payload =
-            if String.IsNullOrEmpty text then [||] else utf8 text
+        let payload = if String.IsNullOrEmpty text then [||] else utf8 text
 
         Array.append payload [| 0uy |]
 

@@ -85,7 +85,9 @@ type SfdScript private (document: SfdDocument) =
 
     member _.CameraArea: string option =
         document.TryGetWorldPropertyOfPart(WorldPropertyIds.CameraArea, 0)
-        |> Option.bind (function WpString s -> Some s | _ -> None)
+        |> Option.bind (function
+            | WpString s -> Some s
+            | _ -> None)
 
     member _.SetCameraArea(cameraArea: string) : unit =
         Validation.cameraArea cameraArea
@@ -93,7 +95,9 @@ type SfdScript private (document: SfdDocument) =
 
     member _.WorldBottom: string option =
         document.TryGetWorldPropertyOfPart(WorldPropertyIds.Bottom, 0)
-        |> Option.bind (function WpString s -> Some s | _ -> None)
+        |> Option.bind (function
+            | WpString s -> Some s
+            | _ -> None)
 
     member _.SetWorldBottom(bottom: string) : unit =
         Validation.floatText bottom "World bottom"
@@ -101,7 +105,9 @@ type SfdScript private (document: SfdDocument) =
 
     member _.Weather: string option =
         document.TryGetWorldPropertyOfPart(WorldPropertyIds.Weather, 0)
-        |> Option.bind (function WpString s -> Some s | _ -> None)
+        |> Option.bind (function
+            | WpString s -> Some s
+            | _ -> None)
 
     member _.SetWeather(weather: string) : unit =
         Validation.nullFreeText weather "Weather"
@@ -109,7 +115,9 @@ type SfdScript private (document: SfdDocument) =
 
     member _.StartCommands: string option =
         document.TryGetWorldPropertyOfPart(WorldPropertyIds.StartCommands, 0)
-        |> Option.bind (function WpString s -> Some s | _ -> None)
+        |> Option.bind (function
+            | WpString s -> Some s
+            | _ -> None)
 
     member _.SetStartCommands(commands: string) : unit =
         Validation.nullFreeText commands "Start commands"

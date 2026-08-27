@@ -5,14 +5,18 @@ open System
 /// Body information of a single map part: the leading c_wp section when present
 /// plus the embedded c_scrpt script of regular maps.
 type internal PartBody =
-    { WorldProperties: WorldProperties option
-      /// Decoded C# source from c_scrpt together with the splicable range of the
-      /// length-prefixed Base64 string. Only present in regular maps.
-      MapScriptSource: (string * ByteRange) option }
+    {
+        WorldProperties: WorldProperties option
+        /// Decoded C# source from c_scrpt together with the splicable range of the
+        /// length-prefixed Base64 string. Only present in regular maps.
+        MapScriptSource: (string * ByteRange) option
+    }
 
 module internal PartBody =
 
-    let empty = { WorldProperties = None; MapScriptSource = None }
+    let empty =
+        { WorldProperties = None
+          MapScriptSource = None }
 
 /// c_scrpt payload helpers: the game stores Base64(UTF-8 source) as one
 /// length-prefixed string.
@@ -23,7 +27,8 @@ module internal Decode =
     let mapScript (rawBase64: string) : string =
         try
             Convert.FromBase64String rawBase64 |> Text.Encoding.UTF8.GetString
-        with :? FormatException -> ""
+        with :? FormatException ->
+            ""
 
 /// One parsed component world of a file. Part 1 is the master part and is the only
 /// one carrying the h_pt parts table and thumbnail; later campaign parts mirror the
@@ -40,7 +45,8 @@ module internal PartParsing =
     let parseHeaderAt (data: byte[]) (startPosition: int) : SfdHeader =
         if startPosition <= 0 || startPosition >= data.Length then
             raise (
-                SfdFormatException $"Part start position {startPosition} lies outside the file ({data.Length} bytes); the parts table appears to be corrupt."
+                SfdFormatException
+                    $"Part start position {startPosition} lies outside the file ({data.Length} bytes); the parts table appears to be corrupt."
             )
 
         Header.parse data startPosition
@@ -72,10 +78,11 @@ module internal PartParsing =
                     let raw = reader.ReadString()
                     mapScript <- Some(Decode.mapScript raw, reader.LastRange)
 
-                { WorldProperties = worldProperties; MapScriptSource = mapScript }
+                { WorldProperties = worldProperties
+                  MapScriptSource = mapScript }
 
-            with
-            | :? SfdException -> PartBody.empty
+            with :? SfdException ->
+                PartBody.empty
 
     /// Parses every component world declared by the master parts table.
     /// The file always begins with the master part; its stored position is pinned to 0.
@@ -116,10 +123,16 @@ type SfdDocument private (initialBytes: byte[]) =
             )
 
         let head =
-            if range.Start = 0 then [||] else Array.sub source 0 range.Start
+            if range.Start = 0 then
+                [||]
+            else
+                Array.sub source 0 range.Start
 
         let tail =
-            if range.End >= source.Length then [||] else Array.sub source range.End (source.Length - range.End)
+            if range.End >= source.Length then
+                [||]
+            else
+                Array.sub source range.End (source.Length - range.End)
 
         Array.concat [ head; replacement; tail ]
 
@@ -156,11 +169,8 @@ type SfdDocument private (initialBytes: byte[]) =
     /// Table payload length depends solely on names (integers keep their fixed width),
     /// so the position math stays independent of the resulting serialized bytes.
     member _.BuildPatchedTable
-        (
-            masterParts: SfdMapPart list,
-            contentEdits: (ByteRange * byte[]) list,
-            rename: (int * string) option
-        ) : byte[] =
+        (masterParts: SfdMapPart list, contentEdits: (ByteRange * byte[]) list, rename: (int * string) option)
+        : byte[] =
 
         match rename with
         | Some(index, newName) ->
@@ -187,14 +197,19 @@ type SfdDocument private (initialBytes: byte[]) =
         let shiftedEntries =
             renamedEntries
             |> List.mapi (fun i entry ->
-                if i = 0 then entry
+                if i = 0 then
+                    entry
                 else
                     let shiftFromContent =
                         contentEdits
                         |> List.sumBy (fun (range: ByteRange, replacement) ->
-                            if range.Start < entry.StartPosition then replacement.Length - range.Length else 0)
+                            if range.Start < entry.StartPosition then
+                                replacement.Length - range.Length
+                            else
+                                0)
 
-                    { entry with StartPosition = entry.StartPosition + ownDelta + shiftFromContent })
+                    { entry with
+                        StartPosition = entry.StartPosition + ownDelta + shiftFromContent })
 
         Header.serializePartsTable shiftedEntries
 
@@ -207,46 +222,49 @@ type SfdDocument private (initialBytes: byte[]) =
         let isMultiPart = masterHeader.Parts.Length > 1
 
         let sortedDesc =
-            contentEdits
-            |> List.sortByDescending (fun (r: ByteRange, _) -> r.Start)
+            contentEdits |> List.sortByDescending (fun (r: ByteRange, _) -> r.Start)
 
         let allEdits =
             match rename, masterHeader.PartsTableRange with
             | Some _, None ->
                 raise (
-                    SfdFormatException "Renaming a chapter requires an h_pt parts table, which this file does not contain."
+                    SfdFormatException
+                        "Renaming a chapter requires an h_pt parts table, which this file does not contain."
                 )
             | _, None -> sortedDesc
             | None, Some tableRange ->
                 // Patch positions only when some edit actually changes sizes;
                 // otherwise leave the table untouched so commits stay byte-preserving.
                 let anyDelta =
-                    sortedDesc |> List.exists (fun (r, replacement) -> replacement.Length <> r.Length)
+                    sortedDesc
+                    |> List.exists (fun (r, replacement) -> replacement.Length <> r.Length)
 
                 if isMultiPart && anyDelta then
-                    (tableRange, this.BuildPatchedTable (masterHeader.Parts, sortedDesc, None)) :: sortedDesc
+                    (tableRange, this.BuildPatchedTable(masterHeader.Parts, sortedDesc, None))
+                    :: sortedDesc
                 else
                     sortedDesc
             | Some(index, newName), Some tableRange ->
-                (tableRange, this.BuildPatchedTable (masterHeader.Parts, sortedDesc, Some(index, newName)))
+                (tableRange, this.BuildPatchedTable(masterHeader.Parts, sortedDesc, Some(index, newName)))
                 :: sortedDesc
 
         // Final overlap validation includes any synthetic table edit from above.
-        let ordered =
-            List.sortByDescending (fun (r: ByteRange, _) -> r.Start) allEdits
+        let ordered = List.sortByDescending (fun (r: ByteRange, _) -> r.Start) allEdits
 
         let mutable ceiling = Int32.MaxValue
 
         for range, _ in ordered do
             if range.End > ceiling then
                 raise (
-                    SfdException $"Refusing overlapping edits: [{range.Start}, {range.End}) crosses a previous edit boundary."
+                    SfdException
+                        $"Refusing overlapping edits: [{range.Start}, {range.End}) crosses a previous edit boundary."
                 )
 
             ceiling <- range.Start
 
         let updated =
-            ordered |> List.fold (fun acc (range, replacement) -> splice acc range replacement) data
+            ordered
+            |> List.fold (fun acc (range, replacement) -> splice acc range replacement) data
 
         data <- updated
         parts <- PartParsing.parseParts updated
@@ -283,8 +301,11 @@ type SfdDocument private (initialBytes: byte[]) =
     /// Edits required to set one world property on one part. Values are replaced
     /// key+type+value wholesale so even kind changes stay valid; missing properties
     /// are appended after the last stored entry with a bumped count field.
-    member internal _.WorldPropertyEditsForPart (part: SfdPart) (propertyId: int) (value: WorldPropertyValue) :
-        (ByteRange * byte[]) list =
+    member internal _.WorldPropertyEditsForPart
+        (part: SfdPart)
+        (propertyId: int)
+        (value: WorldPropertyValue)
+        : (ByteRange * byte[]) list =
         match part.Body.WorldProperties with
         | None -> []
         | Some properties ->
@@ -292,14 +313,11 @@ type SfdDocument private (initialBytes: byte[]) =
             | Some existing ->
                 let tripleStart = existing.ValueRange.Start - 8
 
-                [ ByteRange.create tripleStart existing.ValueRange.End,
-                  WorldProperties.serializeEntry propertyId value ]
+                [ ByteRange.create tripleStart existing.ValueRange.End, WorldProperties.serializeEntry propertyId value ]
             | None ->
-                [
-                    properties.CountFieldRange, BitConverter.GetBytes(properties.Properties.Length + 1)
-                    ByteRange.create properties.SectionEnd properties.SectionEnd,
-                    WorldProperties.serializeEntry propertyId value
-                ]
+                [ properties.CountFieldRange, BitConverter.GetBytes(properties.Properties.Length + 1)
+                  ByteRange.create properties.SectionEnd properties.SectionEnd,
+                  WorldProperties.serializeEntry propertyId value ]
 
     /// Sets one world property in every part; appends it where it does not exist yet.
     member this.SetWorldProperty(propertyId: int, value: WorldPropertyValue) : unit =
@@ -324,7 +342,7 @@ type SfdDocument private (initialBytes: byte[]) =
         Validation.versionCode versionCode
         let encoded = SfdEncode.string versionCode
 
-        this.Apply (
+        this.Apply(
             parts
             |> List.map (fun part ->
                 match part.Header.VersionRange with
@@ -360,7 +378,7 @@ type SfdDocument private (initialBytes: byte[]) =
     member this.SetAuthorLock(lockValue: bool) : unit =
         let encoded = SfdEncode.bool lockValue
 
-        this.Apply (
+        this.Apply(
             parts
             |> List.collect (fun part ->
                 let headerEdit =
@@ -378,7 +396,7 @@ type SfdDocument private (initialBytes: byte[]) =
     member this.UnlockOfficial() : unit =
         let encoded = SfdEncode.utf8 Tokens.EditorMarkerValue
 
-        this.Apply (
+        this.Apply(
             parts
             |> List.map (fun part ->
                 match part.Header.OfficialMarkerRange with
@@ -389,7 +407,7 @@ type SfdDocument private (initialBytes: byte[]) =
     /// Computes the official lock token per part from its own name and author and
     /// stores it in h_mt.
     member this.LockOfficial() : unit =
-        this.Apply (
+        this.Apply(
             parts
             |> List.map (fun part ->
                 match part.Header.OfficialMarkerRange with
@@ -399,7 +417,7 @@ type SfdDocument private (initialBytes: byte[]) =
 
     /// Rewrites the h_mtp pair of every part while preserving each sibling value.
     member private this.SetMapTypePlayers(typeOf: int option, playersOf: int option) : unit =
-        this.Apply (
+        this.Apply(
             parts
             |> List.map (fun part ->
                 match part.Header.MapTypePlayersRange with
@@ -408,10 +426,7 @@ type SfdDocument private (initialBytes: byte[]) =
                     let typeValue = typeOf |> Option.defaultValue part.Header.MapType
                     let playerValue = playersOf |> Option.defaultValue part.Header.TotalPlayers
 
-                    range,
-                    Array.append
-                        (BitConverter.GetBytes typeValue)
-                        (BitConverter.GetBytes playerValue))
+                    range, Array.append (BitConverter.GetBytes typeValue) (BitConverter.GetBytes playerValue))
         )
 
     /// Changes the declared map category of every part (h_mtp + property 103).
@@ -442,7 +457,7 @@ type SfdDocument private (initialBytes: byte[]) =
         let formatted = tags |> Seq.map (SfdTag.idOf >> string) |> String.concat ","
         let encoded = SfdEncode.string formatted
 
-        this.Apply (
+        this.Apply(
             parts
             |> List.collect (fun part ->
                 let headerEdit =
@@ -460,7 +475,7 @@ type SfdDocument private (initialBytes: byte[]) =
     member this.SetTemplate(isTemplate: bool) : unit =
         let byteEncoded = SfdEncode.bool isTemplate
 
-        this.Apply (
+        this.Apply(
             parts
             |> List.collect (fun part ->
                 let headerEdit =
@@ -484,21 +499,24 @@ type SfdDocument private (initialBytes: byte[]) =
         let master = this.MasterPart
 
         let modesFromHeader =
-            master.Header.ScriptTypes
-            |> Option.toList
-            |> List.collect SfdGameModes.parse
+            master.Header.ScriptTypes |> Option.toList |> List.collect SfdGameModes.parse
 
         let modesFromProperty =
             master.Body.WorldProperties
             |> Option.bind (WorldProperties.tryFind WorldPropertyIds.ScriptTypes)
             |> Option.map (fun entry -> entry.Value)
-            |> Option.bind (function WpString s -> Some s | _ -> None)
+            |> Option.bind (function
+                | WpString s -> Some s
+                | _ -> None)
             |> Option.toList
             |> List.collect SfdGameModes.parse
 
-        if not (List.isEmpty modesFromHeader) then modesFromHeader
-        elif not (List.isEmpty modesFromProperty) then modesFromProperty
-        else []
+        if not (List.isEmpty modesFromHeader) then
+            modesFromHeader
+        elif not (List.isEmpty modesFromProperty) then
+            modesFromProperty
+        else
+            []
 
     /// Sets the game mode availability string in every part's property store and in
     /// every extension-script h_ext header section.
@@ -515,7 +533,8 @@ type SfdDocument private (initialBytes: byte[]) =
                         match part.Header.ExtensionScriptTypesRange with
                         | Some range -> [ range, encoded ]
                         | None -> []
-                    else []
+                    else
+                        []
 
                 let propertyEdits =
                     this.WorldPropertyEditsForPart part WorldPropertyIds.ScriptTypes (WpString formatted)
@@ -541,8 +560,10 @@ type SfdDocument private (initialBytes: byte[]) =
         match parts |> List.tryFind (fun p -> p.Index = partIndex) with
         | None -> raise (SfdValidationException $"Part index {partIndex} does not exist in this file.")
         | Some part ->
-            if part.Header.IsExtensionScript then part.Header.ScriptSource
-            else part.Body.MapScriptSource |> Option.map fst
+            if part.Header.IsExtensionScript then
+                part.Header.ScriptSource
+            else
+                part.Body.MapScriptSource |> Option.map fst
 
     /// Rewrites the inner script of the given part.
     /// Map payloads are re-encoded as canonical Base64 exactly like the game writer;
@@ -563,7 +584,9 @@ type SfdDocument private (initialBytes: byte[]) =
             else
                 match part.Body.MapScriptSource with
                 | None ->
-                    raise (SfdFormatException $"Part {partIndex} does not contain a '{Tokens.MapScriptSection}' section.")
+                    raise (
+                        SfdFormatException $"Part {partIndex} does not contain a '{Tokens.MapScriptSection}' section."
+                    )
                 | Some(_, range) ->
                     let base64Text = Convert.ToBase64String(Text.Encoding.UTF8.GetBytes source)
                     this.Apply [ range, SfdEncode.string base64Text ]

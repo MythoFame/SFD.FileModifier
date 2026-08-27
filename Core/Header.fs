@@ -12,43 +12,45 @@ type SfdMapPart =
 /// Sequentially parsed h_* header sections of a Superfighters Deluxe file,
 /// together with the byte ranges required for surgical edits.
 type SfdHeader =
-    { Guid: Guid
-      Version: string option
-      OriginalGuid: Guid option
-      OwnerHash: string option
-      IsTemplate: bool
-      EditLock: bool
-      Name: string
-      Author: string
-      MapType: int
-      TotalPlayers: int
-      Tags: string
-      Description: string
-      SaveDate: DateTime option
-      PublishExternalId: string
-      /// Raw contents of h_mt: either Tokens.EditorMarkerValue or an official lock token.
-      OfficialMarker: char[] option
-      IsOfficial: bool
-      IsExtensionScript: bool
-      ScriptTypes: string option
-      /// Splicable range of the h_ext value (extension scripts only).
-      ExtensionScriptTypesRange: ByteRange option
-      ScriptSource: string option
-      HasThumbnail: bool
-      /// Entries of h_pt; empty when the section is missing.
-      Parts: SfdMapPart list
-      VersionRange: ByteRange option
-      PublishExternalIdRange: ByteRange option
-      EditLockByteRange: ByteRange option
-      OfficialMarkerRange: ByteRange option
-      ScriptSourceRange: ByteRange option
-      MapTypePlayersRange: ByteRange option
-      TagsRange: ByteRange option
-      TemplateByteRange: ByteRange option
-      /// Full payload of h_pt (count field + all entries).
-      PartsTableRange: ByteRange option
-      /// Offset of the first body token (first non-h section).
-      HeaderEnd: int }
+    {
+        Guid: Guid
+        Version: string option
+        OriginalGuid: Guid option
+        OwnerHash: string option
+        IsTemplate: bool
+        EditLock: bool
+        Name: string
+        Author: string
+        MapType: int
+        TotalPlayers: int
+        Tags: string
+        Description: string
+        SaveDate: DateTime option
+        PublishExternalId: string
+        /// Raw contents of h_mt: either Tokens.EditorMarkerValue or an official lock token.
+        OfficialMarker: char[] option
+        IsOfficial: bool
+        IsExtensionScript: bool
+        ScriptTypes: string option
+        /// Splicable range of the h_ext value (extension scripts only).
+        ExtensionScriptTypesRange: ByteRange option
+        ScriptSource: string option
+        HasThumbnail: bool
+        /// Entries of h_pt; empty when the section is missing.
+        Parts: SfdMapPart list
+        VersionRange: ByteRange option
+        PublishExternalIdRange: ByteRange option
+        EditLockByteRange: ByteRange option
+        OfficialMarkerRange: ByteRange option
+        ScriptSourceRange: ByteRange option
+        MapTypePlayersRange: ByteRange option
+        TagsRange: ByteRange option
+        TemplateByteRange: ByteRange option
+        /// Full payload of h_pt (count field + all entries).
+        PartsTableRange: ByteRange option
+        /// Offset of the first body token (first non-h section).
+        HeaderEnd: int
+    }
 
 [<RequireQualifiedAccess>]
 module Header =
@@ -225,16 +227,24 @@ module Header =
 
                     if partCount < 0 || partCount > 1024 then
                         raise (
-                            SfdFormatException $"h_pt declares an implausible part count ({partCount}) at offset {tableStart}."
+                            SfdFormatException
+                                $"h_pt declares an implausible part count ({partCount}) at offset {tableStart}."
                         )
 
                     let rec readParts remaining acc =
-                        if remaining = 0 then List.rev acc
+                        if remaining = 0 then
+                            List.rev acc
                         else
                             let name = reader.ReadStringNonNull()
                             let selectable = reader.ReadBoolean()
                             let startPosition = reader.ReadInt32()
-                            readParts (remaining - 1) ({ Name = name; Selectable = selectable; StartPosition = startPosition } :: acc)
+
+                            readParts
+                                (remaining - 1)
+                                ({ Name = name
+                                   Selectable = selectable
+                                   StartPosition = startPosition }
+                                 :: acc)
 
                     parts <- readParts partCount []
                     partsTableRange <- Some(ByteRange.create tableStart reader.Position)
@@ -244,16 +254,15 @@ module Header =
 
                     if length < 0 || length > reader.Remaining then
                         raise (
-                            SfdFormatException $"h_img declares thumbnail size {length} which exceeds the remaining file length."
+                            SfdFormatException
+                                $"h_img declares thumbnail size {length} which exceeds the remaining file length."
                         )
 
                     reader.Skip length
                     hasThumbnail <- true
 
                 | other ->
-                    raise (
-                        SfdFormatException $"Error: Header information '{other.TrimEnd('\n')}' could not be loaded."
-                    )
+                    raise (SfdFormatException $"Error: Header information '{other.TrimEnd('\n')}' could not be loaded.")
 
         let officialMatch =
             match officialMarker with

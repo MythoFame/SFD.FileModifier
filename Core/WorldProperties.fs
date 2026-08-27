@@ -37,7 +37,8 @@ module WorldProperties =
 
         if count < 0 then
             raise (
-                SfdFormatException $"c_wp section declares an invalid negative property count ({count}) at offset {countStart}."
+                SfdFormatException
+                    $"c_wp section declares an invalid negative property count ({count}) at offset {countStart}."
             )
 
         let readValue () : WorldPropertyValue * ByteRange =
@@ -56,15 +57,23 @@ module WorldProperties =
                 WpBool b, reader.LastRange
             | other ->
                 raise (
-                    SfdFormatException $"Unsupported world property value type {other} encountered after reading {reader.Position} bytes."
+                    SfdFormatException
+                        $"Unsupported world property value type {other} encountered after reading {reader.Position} bytes."
                 )
 
         let rec loop remaining acc =
-            if remaining = 0 then List.rev acc
+            if remaining = 0 then
+                List.rev acc
             else
                 let key = reader.ReadInt32()
                 let value, range = readValue ()
-                loop (remaining - 1) ({ Key = key; Value = value; ValueRange = range } :: acc)
+
+                loop
+                    (remaining - 1)
+                    ({ Key = key
+                       Value = value
+                       ValueRange = range }
+                     :: acc)
 
         { Properties = loop count []
           CountFieldRange = countRange
