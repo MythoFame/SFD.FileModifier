@@ -14,14 +14,14 @@ type SFDBinaryReader(stream: Stream) =
 
     member this.ReadStringNonNull() =
         let str = this.ReadString()
-        if String.IsNullOrEmpty(str) then "" else str
+        if String.IsNullOrEmpty str then "" else str
 
     member this.ReadStringNullDelimiter() =
         let rec readBytes (bytes: ResizeArray<byte>) =
             let b = this.ReadByte()
 
             if b <> 0uy then
-                bytes.Add(b)
+                bytes.Add b
                 readBytes bytes
             else
                 bytes.ToArray()
@@ -30,7 +30,7 @@ type SFDBinaryReader(stream: Stream) =
 
     override this.Dispose(disposing: bool) =
         if this.AutoCloseStream then
-            base.Dispose(disposing)
+            base.Dispose disposing
 
 type SFDBinaryWriter(stream: Stream) =
     inherit BinaryWriter(stream)
@@ -39,18 +39,18 @@ type SFDBinaryWriter(stream: Stream) =
 
     member this.WriteStringNullDelimiter(text: string) =
         let sanitizedText =
-            if String.IsNullOrEmpty(text) then
+            if String.IsNullOrEmpty text then
                 ""
             else
                 text.Replace("\0", "")
 
-        let bytes = Encoding.UTF8.GetBytes(sanitizedText)
-        this.Write(bytes)
+        let bytes = Encoding.UTF8.GetBytes sanitizedText
+        this.Write bytes
         this.Write(byte 0)
 
     override this.Dispose(disposing: bool) =
         if this.AutoCloseStream then
-            base.Dispose(disposing)
+            base.Dispose disposing
 
 /// Parse a contiguous hex string (e.g. "31C2BD...") into raw bytes.
 let hexStringToBytes (hex: string) : byte[] =
@@ -68,7 +68,7 @@ let modifyMtHeader (filePath: string, replacementBytes: byte[]) =
             reader.BaseStream
             |> fun s -> Array.init (int s.Length) (fun _ -> reader.ReadByte())
 
-        let headerBytes = Encoding.ASCII.GetBytes(headerName)
+        let headerBytes = Encoding.ASCII.GetBytes headerName
 
         let offsets =
             fileBytes
@@ -95,16 +95,16 @@ let modifyMtHeader (filePath: string, replacementBytes: byte[]) =
 
                 let newFilePath =
                     Path.Combine(
-                        Path.GetDirectoryName(filePath),
-                        Path.GetFileNameWithoutExtension(filePath)
+                        Path.GetDirectoryName filePath,
+                        Path.GetFileNameWithoutExtension filePath
                         + appendName
-                        + Path.GetExtension(filePath)
+                        + Path.GetExtension filePath
                     )
 
                 use writer =
                     new SFDBinaryWriter(new FileStream(newFilePath, FileMode.Create, FileAccess.Write))
 
-                writer.Write(newFileBytes)
+                writer.Write newFileBytes
 
                 printfn "Successfully modified and saved the file: %s" newFilePath
             | None -> printfn "Error: Terminator byte not found after the header."
@@ -115,9 +115,9 @@ let modifyMtHeader (filePath: string, replacementBytes: byte[]) =
 
 let modifyPublishIdHeader (filePath: string, publishId: string) =
     let publishIdWithPrefix =
-        Array.append [| byte 0x0A |] (Encoding.UTF8.GetBytes(publishId))
+        Array.append [| byte 0x0A |] (Encoding.UTF8.GetBytes publishId)
 
-    let peiHeader = Encoding.ASCII.GetBytes("h_pei")
+    let peiHeader = Encoding.ASCII.GetBytes "h_pei"
     let mHeader = [| byte 0x01; byte 0x4D; byte 0x01 |]
     let terminatorByte = byte 0x08
 
@@ -136,7 +136,7 @@ let modifyPublishIdHeader (filePath: string, publishId: string) =
             |> Array.tryFindIndex (fun window -> window = peiHeader)
 
         match peiOffset with
-        | Some(offset) ->
+        | Some offset ->
             // Remove the null byte after "h_pei" and insert the publish ID
             let beforePei = fileBytes.[.. offset + peiHeader.Length - 1]
             let afterPei = fileBytes.[(offset + peiHeader.Length) ..]
@@ -146,7 +146,7 @@ let modifyPublishIdHeader (filePath: string, publishId: string) =
             let removePeiExtraByte =
                 newFileBytes1
                 |> Array.mapi (fun idx byte ->
-                    if idx = (offset + peiHeader.Length + publishIdWithPrefix.Length) then
+                    if idx = offset + peiHeader.Length + publishIdWithPrefix.Length then
                         None
                     else
                         Some byte)
@@ -159,7 +159,7 @@ let modifyPublishIdHeader (filePath: string, publishId: string) =
                 |> Array.tryFindIndex (fun window -> window = mHeader)
 
             match mHeaderOffset with
-            | Some(mOffset) ->
+            | Some mOffset ->
                 // **Only remove one byte before the publish ID in the M header** (no other removal)
                 let beforeM = removePeiExtraByte.[.. mOffset + mHeader.Length - 1]
                 let afterM = removePeiExtraByte.[(mOffset + mHeader.Length) ..]
@@ -176,7 +176,7 @@ let modifyPublishIdHeader (filePath: string, publishId: string) =
                     Array.tryFindIndex (fun byte -> byte = terminatorByte) newFileBytes2.[mOffset..]
 
                 match terminatorIndex with
-                | Some(tIndex) ->
+                | Some tIndex ->
                     let terminatorOffset = mOffset + tIndex
                     let beforeTerminator = newFileBytes2.[.. terminatorOffset - 1]
                     let afterTerminator = newFileBytes2.[terminatorOffset..]
@@ -187,16 +187,16 @@ let modifyPublishIdHeader (filePath: string, publishId: string) =
                     // Write the modified bytes back to a new file
                     let newFilePath =
                         Path.Combine(
-                            Path.GetDirectoryName(filePath),
-                            Path.GetFileNameWithoutExtension(filePath)
+                            Path.GetDirectoryName filePath,
+                            Path.GetFileNameWithoutExtension filePath
                             + appendName
-                            + Path.GetExtension(filePath)
+                            + Path.GetExtension filePath
                         )
 
                     use writer =
                         new SFDBinaryWriter(new FileStream(newFilePath, FileMode.Create, FileAccess.Write))
 
-                    writer.Write(finalFileBytes)
+                    writer.Write finalFileBytes
 
                     printfn "Successfully modified and saved the file: %s" newFilePath
                 | None -> printfn "Error: Terminator byte not found."
@@ -232,7 +232,7 @@ let modifyVersion (filePath: string, versionCode: string) =
             reader.BaseStream
             |> fun s -> Array.init (int s.Length) (fun _ -> reader.ReadByte())
 
-        let replacementBytes = Encoding.ASCII.GetBytes(versionCode)
+        let replacementBytes = Encoding.ASCII.GetBytes versionCode
 
         // Find the first occurrence of the startByte
         let startIndex = fileBytes |> Array.tryFindIndex ((=) startByte)
@@ -255,16 +255,16 @@ let modifyVersion (filePath: string, versionCode: string) =
                 // Save the modified file
                 let newFilePath =
                     Path.Combine(
-                        Path.GetDirectoryName(filePath),
-                        Path.GetFileNameWithoutExtension(filePath)
+                        Path.GetDirectoryName filePath,
+                        Path.GetFileNameWithoutExtension filePath
                         + appendName
-                        + Path.GetExtension(filePath)
+                        + Path.GetExtension filePath
                     )
 
                 use writer =
                     new SFDBinaryWriter(new FileStream(newFilePath, FileMode.Create, FileAccess.Write))
 
-                writer.Write(newFileBytes)
+                writer.Write newFileBytes
 
                 printfn "Successfully modified and saved the file: %s" newFilePath
             | None -> printfn "Error: Terminator byte not found after start byte."
@@ -275,12 +275,12 @@ let modifyVersion (filePath: string, versionCode: string) =
 
 let chooseModifyVersion (filePath: string) =
     let isValidVersion (versionCode: string) =
-        versionCode.StartsWith("v.1.") && versionCode.Length = 8
+        versionCode.StartsWith "v.1." && versionCode.Length = 8
 
     printf "Enter the version code (Example: v.1.0.0a): "
     let versionCode = Console.ReadLine().Trim()
 
-    if (isValidVersion (versionCode)) then
+    if isValidVersion versionCode then
         modifyVersion (filePath, versionCode)
     else
         printfn "Error: Invalid version code."
@@ -296,7 +296,7 @@ let modifyAuthorLock (filePath: string, lockValue: bool) =
             reader.BaseStream
             |> fun s -> Array.init (int s.Length) (fun _ -> reader.ReadByte())
 
-        let headerBytes = Encoding.ASCII.GetBytes(headerName)
+        let headerBytes = Encoding.ASCII.GetBytes headerName
 
         let offset =
             fileBytes
@@ -312,16 +312,16 @@ let modifyAuthorLock (filePath: string, lockValue: bool) =
 
             let newFilePath =
                 Path.Combine(
-                    Path.GetDirectoryName(filePath),
-                    Path.GetFileNameWithoutExtension(filePath)
+                    Path.GetDirectoryName filePath,
+                    Path.GetFileNameWithoutExtension filePath
                     + appendName
-                    + Path.GetExtension(filePath)
+                    + Path.GetExtension filePath
                 )
 
             use writer =
                 new SFDBinaryWriter(new FileStream(newFilePath, FileMode.Create, FileAccess.Write))
 
-            writer.Write(newFileBytes)
+            writer.Write newFileBytes
 
             let action = if lockValue then "locked" else "unlocked"
             printfn "Successfully %s author and saved the file: %s" action newFilePath
@@ -341,7 +341,7 @@ let rec showMenuAndExecute filePath =
     printf "Enter your choice: "
 
     match Console.ReadLine() with
-    | "1" -> modifyMtHeader (filePath, Encoding.ASCII.GetBytes("SFDMAPEDIT"))
+    | "1" -> modifyMtHeader (filePath, Encoding.ASCII.GetBytes "SFDMAPEDIT")
     | "2" -> modifyAuthorLock (filePath, true)
     | "3" -> modifyAuthorLock (filePath, false)
     | "4" -> choosePublishIdHeader filePath
@@ -371,7 +371,7 @@ let printVersion () = printfn "%s" version
 
 let runMode (filePath: string) (mode: string) (modeArg: string option) =
     match mode with
-    | "1" -> modifyMtHeader (filePath, Encoding.ASCII.GetBytes("SFDMAPEDIT"))
+    | "1" -> modifyMtHeader (filePath, Encoding.ASCII.GetBytes "SFDMAPEDIT")
     | "2" -> modifyAuthorLock (filePath, true)
     | "3" -> modifyAuthorLock (filePath, false)
     | "4" ->
@@ -388,7 +388,7 @@ let runMode (filePath: string) (mode: string) (modeArg: string option) =
     | "5" ->
         match modeArg with
         | Some arg ->
-            let isValidVersion (v: string) = v.StartsWith("v.1.") && v.Length = 8
+            let isValidVersion (v: string) = v.StartsWith "v.1." && v.Length = 8
 
             if isValidVersion arg then
                 modifyVersion (filePath, arg)
@@ -424,7 +424,7 @@ let rec parseArgs (tokens: string list) (acc: CliArgs) : CliArgs =
         parseArgs
             rest
             { acc with
-                File = Some(value.Trim('"')) }
+                File = Some(value.Trim '"') }
     | ("-m" | "--mode") :: value :: rest -> parseArgs rest { acc with Mode = Some value }
     | ("-a" | "--arg") :: value :: rest -> parseArgs rest { acc with ModeArg = Some value }
     | unknown :: rest ->
@@ -445,9 +445,9 @@ else
         | Some fp -> fp
         | None ->
             printfn "No file specified. Please drag and drop a file into the console or use -f <path>."
-            Console.ReadLine().Trim('"')
+            Console.ReadLine().Trim '"'
 
-    if File.Exists(filePath) then
+    if File.Exists filePath then
         match cli.Mode with
         | Some m -> runMode filePath m cli.ModeArg
         | None -> showMenuAndExecute filePath // -i flag or no mode = interactive
