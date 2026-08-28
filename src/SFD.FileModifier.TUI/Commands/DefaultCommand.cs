@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Reflection;
+using SFD.FileModifier.TUI.Interactive;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -31,7 +32,7 @@ public sealed class DefaultCommand : Command<DefaultCommandSettings>
         if (string.IsNullOrWhiteSpace(settings.FilePath))
         {
             AnsiConsole.MarkupLine("[red]Error:[/] a file path is required.");
-            AnsiConsole.MarkupLine("[grey]Use -h or --help for usage.[/]");
+            AnsiConsole.MarkupLine("[dim]Use -h or --help for usage.[/]");
             return 1;
         }
 
@@ -57,16 +58,21 @@ public sealed class DefaultCommand : Command<DefaultCommandSettings>
             return 1;
         }
 
-        AnsiConsole.Write(
-            new Rule($"[green]{Markup.Escape(Path.GetFileName(settings.FilePath))}[/]")
-                .RuleStyle("grey")
-                .LeftJustified());
+        FileViewModel vm;
 
-        AnsiConsole.MarkupLineInterpolated($"[bold]Type[/]      : {kind}");
-        AnsiConsole.MarkupLineInterpolated($"[bold]Path[/]      : {Markup.Escape(Path.GetFullPath(settings.FilePath))}");
-        AnsiConsole.MarkupLineInterpolated($"[bold]Size[/]      : {new FileInfo(settings.FilePath).Length:N0} bytes");
+        try
+        {
+            vm = extension == ".sfdm"
+                ? MapSession.Build(settings.FilePath, Core.SfdMap.Load(settings.FilePath))
+                : ScriptSession.Build(settings.FilePath, Core.SfdScript.Load(settings.FilePath));
+        }
+        catch (Core.SfdException ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Error:[/] {Markup.Escape(ex.Message)}");
+            return 1;
+        }
 
-        return 0;
+        return new SessionRunner(vm).Run();
     }
 }
 
