@@ -17,7 +17,7 @@ foreach (var arg in args)
             return 0;
 
         case "-V" or "--version":
-            AnsiConsole.MarkupLineInterpolated($"[bold]SFD.FileModifier[/] v{version}");
+            AnsiConsole.MarkupLineInterpolated($"[bold]SFD.FileModifier.TUI[/] v{version}");
             return 0;
 
         default:
@@ -84,7 +84,7 @@ return 0;
 
 static void PrintHelp(string version)
 {
-    AnsiConsole.MarkupLineInterpolated($"[bold]SFD.FileModifier[/] v{version}");
+    AnsiConsole.MarkupLineInterpolated($"[bold]SFD.FileModifier.TUI[/] v{version}");
     AnsiConsole.WriteLine();
     AnsiConsole.WriteLine("A tool to modify Superfighters Deluxe maps (.sfdm) and extension scripts (.sfde).");
     AnsiConsole.WriteLine();
