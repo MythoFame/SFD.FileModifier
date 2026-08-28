@@ -179,7 +179,7 @@ type SfdDocument private (initialBytes: byte[]) =
 
             if isNull newName then
                 raise (SfdValidationException "Chapter name cannot be null.")
-            elif newName.Contains('\u0000') then
+            elif newName.Contains '\u0000' then
                 raise (SfdValidationException "Chapter name cannot contain null characters.")
         | None -> ()
 

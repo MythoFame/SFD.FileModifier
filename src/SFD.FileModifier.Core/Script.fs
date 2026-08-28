@@ -17,7 +17,7 @@ type SfdScript private (document: SfdDocument) =
         if extension <> ".sfde" then
             raise (SfdExtensionException(".sfde", extension))
 
-        let document = SfdDocument.Load(path)
+        let document = SfdDocument.Load path
 
         if not document.MasterHeader.IsExtensionScript then
             raise (
@@ -38,9 +38,9 @@ type SfdScript private (document: SfdDocument) =
     // ------------------------------------------------------------------
 
     /// The embedded C# script source of the first part (h_exscript, raw UTF-8).
-    member _.ScriptSource: string option = document.GetScriptSource(0)
+    member _.ScriptSource: string option = document.GetScriptSource 0
 
-    member _.GetScriptSourceAt(partIndex: int) : string option = document.GetScriptSource(partIndex)
+    member _.GetScriptSourceAt(partIndex: int) : string option = document.GetScriptSource partIndex
 
     /// Replaces the embedded C# script source. Null characters are rejected.
     member this.SetScriptSource(source: string) : unit = document.SetScriptSource(0, source)

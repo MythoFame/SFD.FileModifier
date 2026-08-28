@@ -17,15 +17,15 @@ type SfdValidationException(message: string) =
 
 /// Raised when a file extension does not match the expected one.
 type SfdExtensionException(expected: string, actual: string) =
-    inherit SfdException($"Expected a {expected} file but got '{actual}'.")
+    inherit SfdException $"Expected a {expected} file but got '{actual}'."
 
 /// Raised when a required header section is missing from the file.
 type SfdHeaderNotFoundException(token: string) =
-    inherit SfdException($"Required header information '{token.TrimEnd('\n')}' was not found in the file.")
+    inherit SfdException $"Required header information '{token.TrimEnd '\n'}' was not found in the file."
 
 /// Raised when a required world property is missing.
 type SfdPropertyNotFoundException(propertyId: int) =
-    inherit SfdException($"World property with id {propertyId} was not found in the file.")
+    inherit SfdException $"World property with id {propertyId} was not found in the file."
 
 [<RequireQualifiedAccess>]
 module Tokens =
@@ -167,7 +167,7 @@ module SfdTag =
         if String.IsNullOrEmpty tags then
             []
         else
-            tags.Split(',')
+            tags.Split ','
             |> Seq.choose (fun token ->
                 match Int32.TryParse(token.Trim()) with
                 | true, id -> Some(ofId id)
@@ -197,7 +197,7 @@ module SfdGameModes =
         if String.IsNullOrEmpty modes then
             []
         else
-            modes.Split(',')
+            modes.Split ','
             |> Seq.map (fun token -> token.Trim())
             |> Seq.filter (fun token -> token.Length > 0)
             |> List.ofSeq
@@ -331,14 +331,14 @@ module Validation =
     let nullFreeText (text: string) (fieldName: string) : unit =
         if isNull text then
             raise (SfdValidationException $"{fieldName} cannot be null.")
-        elif text.Contains('\u0000') then
+        elif text.Contains '\u0000' then
             raise (SfdValidationException $"{fieldName} cannot contain null characters.")
 
     /// Validates strings like "240,-320,-240,320": four comma separated floats.
     let cameraArea (cameraArea: string) : unit =
         nullFreeText cameraArea "Camera area"
 
-        let tokens = cameraArea.Split(',')
+        let tokens = cameraArea.Split ','
 
         let parseable =
             tokens.Length = 4

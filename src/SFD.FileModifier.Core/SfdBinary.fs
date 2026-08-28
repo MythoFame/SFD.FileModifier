@@ -32,9 +32,8 @@ type SfdBinaryReader(data: byte[], ?initialPosition: int) =
     let require count =
         if data.Length - position < count then
             raise (
-                SfdFormatException(
+                SfdFormatException
                     $"Unexpected end of file at offset {position}: needed {count} more byte(s) but only {data.Length - position} remain."
-                )
             )
 
     member _.Position = position
@@ -105,7 +104,7 @@ type SfdBinaryReader(data: byte[], ?initialPosition: int) =
 
         while continueReading do
             let b = this.ReadByte()
-            result <- result ||| ((int b &&& 0x7F) <<< shift)
+            result <- result ||| (int b &&& 0x7F <<< shift)
 
             if b &&& 0x80uy = 0uy then
                 continueReading <- false
@@ -160,7 +159,7 @@ type SfdBinaryReader(data: byte[], ?initialPosition: int) =
             ""
         else
             let start = position
-            let sb = StringBuilder(charCount)
+            let sb = StringBuilder charCount
             let mutable charsRead = 0
 
             while charsRead < charCount do
@@ -200,17 +199,17 @@ module SfdEncode =
         let buffer = ResizeArray<byte>()
 
         while v >= 0x80 do
-            buffer.Add(byte ((v &&& 0x7F) ||| 0x80))
+            buffer.Add(byte (v &&& 0x7F ||| 0x80))
             v <- v >>> 7
 
         buffer.Add(byte v)
         buffer.ToArray()
 
-    let int32 (value: int) : byte[] = BitConverter.GetBytes(value)
+    let int32 (value: int) : byte[] = BitConverter.GetBytes value
 
     let bool (value: bool) : byte[] = [| if value then 1uy else 0uy |]
 
-    let utf8 (text: string) : byte[] = Encoding.UTF8.GetBytes(text)
+    let utf8 (text: string) : byte[] = Encoding.UTF8.GetBytes text
 
     /// Length-prefixed UTF-8 string, matching BinaryWriter.Write(string).
     let string (text: string) : byte[] =

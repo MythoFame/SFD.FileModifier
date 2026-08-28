@@ -1,4 +1,4 @@
 <Solution>
-  <Project Path="Core/Core.fsproj" />
-  <Project Path="TUI/TUI.csproj" />
+  <Project Path="src/SFD.FileModifier.Core/SFD.FileModifier.Core.fsproj" />
+  <Project Path="src/SFD.FileModifier.TUI/SFD.FileModifier.TUI.csproj" />
 </Solution>

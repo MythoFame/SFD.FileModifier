@@ -100,11 +100,11 @@ module Header =
                 seq {
                     yield SfdEncode.string part.Name
                     yield SfdEncode.bool part.Selectable
-                    yield BitConverter.GetBytes(part.StartPosition)
+                    yield BitConverter.GetBytes part.StartPosition
                 })
             |> Array.concat
 
-        Array.append (BitConverter.GetBytes(parts.Length)) entries
+        Array.append (BitConverter.GetBytes parts.Length) entries
 
     /// Parses all header sections sequentially, mirroring the game's MapInfo.ReadMapHeader.
     /// `startPosition` allows parsing secondary campaign parts located deeper in the file;
@@ -208,7 +208,7 @@ module Header =
                     publishExternalIdRange <- Some reader.LastRange
 
                 | Tokens.EditorMarker ->
-                    let chars = reader.ReadUtf8Chars(OfficialToken.CharLength)
+                    let chars = reader.ReadUtf8Chars OfficialToken.CharLength
                     officialMarker <- Some(chars.ToCharArray())
                     officialMarkerRange <- Some reader.LastRange
 
@@ -262,7 +262,7 @@ module Header =
                     hasThumbnail <- true
 
                 | other ->
-                    raise (SfdFormatException $"Error: Header information '{other.TrimEnd('\n')}' could not be loaded.")
+                    raise (SfdFormatException $"Error: Header information '{other.TrimEnd '\n'}' could not be loaded.")
 
         let officialMatch =
             match officialMarker with

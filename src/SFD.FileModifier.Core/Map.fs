@@ -18,7 +18,7 @@ type SfdMap private (document: SfdDocument) =
         if extension <> ".sfdm" then
             raise (SfdExtensionException(".sfdm", extension))
 
-        let document = SfdDocument.Load(path)
+        let document = SfdDocument.Load path
 
         if document.MasterHeader.IsExtensionScript then
             raise (
@@ -77,16 +77,16 @@ type SfdMap private (document: SfdDocument) =
     // ------------------------------------------------------------------
 
     /// Inner script source of the first part.
-    member _.ScriptSource: string option = document.GetScriptSource(0)
+    member _.ScriptSource: string option = document.GetScriptSource 0
 
     /// Inner script sources of every part, in order; empty string when a part has none.
     member _.ScriptSources: string[] =
         [| for index in 0 .. document.PartCount - 1 do
-               match document.GetScriptSource(index) with
+               match document.GetScriptSource index with
                | Some source -> yield source
                | None -> yield "" |]
 
-    member _.GetScriptSourceAt(partIndex: int) : string option = document.GetScriptSource(partIndex)
+    member _.GetScriptSourceAt(partIndex: int) : string option = document.GetScriptSource partIndex
 
     member _.SetScriptSource(source: string) : unit = document.SetScriptSource(0, source)
 
