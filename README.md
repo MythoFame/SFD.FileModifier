@@ -4,7 +4,7 @@
 
 # Superfighters Deluxe Map Modifier
 
-.NET TUI tool to modify Superfighters Deluxe maps and scripts
+.NET TUI tool to modify Superfighters Deluxe maps (.sfdm) and extension scripts (.sfde)
 
 [![GitHub License](https://img.shields.io/github/license/MythoFame/SFD.FileModifier)](LICENSE)
 [![GitHub Release](https://img.shields.io/github/v/release/MythoFame/SFD.FileModifier)](https://github.com/MythoFame/SFD.FileModifier/releases)
