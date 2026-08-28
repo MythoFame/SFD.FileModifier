@@ -88,12 +88,15 @@ public sealed class SessionRunner(FileViewModel vm)
 
     private static void OnCancel(object? sender, ConsoleCancelEventArgs e)
     {
-        // Restore the terminal (cursor, colors) before the process dies.
+        // Restore the terminal (colors, cursor, main buffer) before dying.
         AnsiConsole.Reset();
+        AnsiConsole.Write(new ControlCode("\x1b[?1049l"));
     }
 
-    // Renders the two-pane screen and blocks on key input until the user
-    // either picks an operation (returns its index) or quits (returns -1).
+    // Renders the two-pane screen in the alternate screen buffer and blocks
+    // until the user either picks an operation (returns its index) or quits
+    // (returns -1). Redraws whenever the selection changes or the terminal is
+    // resized.
     private int ShowMenu()
     {
         int? chosen = null;
@@ -102,48 +105,85 @@ public sealed class SessionRunner(FileViewModel vm)
         var layout = BuildLayout();
         layout["info"].Update(InfoPanel(_vm.BuildSections()));
 
-        AnsiConsole.Live(layout).Start(ctx =>
+        AnsiConsole.Cursor.Hide();
+        EnterAlternateScreen();
+
+        try
         {
-            Render(layout, selected);
-            ctx.Refresh();
+            var lastSize = (Width: 0, Height: 0);
+            var needsRender = true;
 
             while (chosen is null)
             {
-                var key = Console.ReadKey(true).Key;
-
-                switch (key)
+                // Re-measure and redraw when the terminal was resized.
+                var size = (Console.WindowWidth, Console.WindowHeight);
+                if (size != lastSize)
                 {
-                    case ConsoleKey.UpArrow:
-                    case ConsoleKey.K:
-                        selected = (selected + count - 1) % count;
-                        break;
-
-                    case ConsoleKey.DownArrow:
-                    case ConsoleKey.J:
-                        selected = (selected + 1) % count;
-                        break;
-
-                    case ConsoleKey.Enter:
-                        chosen = selected;
-                        break;
-
-                    case ConsoleKey.Escape:
-                    case ConsoleKey.Q:
-                        chosen = -1;
-                        break;
+                    lastSize = size;
+                    needsRender = true;
                 }
 
-                if (chosen is null)
+                if (needsRender)
                 {
+                    needsRender = false;
+
+                    // Force the profile to the live terminal size so Layout
+                    // measures against the current window, not a cached one.
+                    AnsiConsole.Profile.Width = Console.WindowWidth;
+                    AnsiConsole.Profile.Height = Console.WindowHeight;
+
                     Render(layout, selected);
-                    ctx.Refresh();
+                    AnsiConsole.Cursor.SetPosition(0, 0);
+                    AnsiConsole.Write(layout);
+                }
+
+                if (Console.KeyAvailable)
+                {
+                    switch (Console.ReadKey(true).Key)
+                    {
+                        case ConsoleKey.UpArrow:
+                        case ConsoleKey.K:
+                            selected = (selected + count - 1) % count;
+                            needsRender = true;
+                            break;
+
+                        case ConsoleKey.DownArrow:
+                        case ConsoleKey.J:
+                            selected = (selected + 1) % count;
+                            needsRender = true;
+                            break;
+
+                        case ConsoleKey.Enter:
+                            chosen = selected;
+                            break;
+
+                        case ConsoleKey.Escape:
+                        case ConsoleKey.Q:
+                            chosen = -1;
+                            break;
+                    }
+                }
+                else
+                {
+                    Thread.Sleep(50);
                 }
             }
-        });
+        }
+        finally
+        {
+            ExitAlternateScreen();
+            AnsiConsole.Cursor.Show();
+        }
 
         _selected = selected;
         return chosen ?? -1;
     }
+
+    private static void EnterAlternateScreen() =>
+        AnsiConsole.Write(new ControlCode("\x1b[?1049h\x1b[H"));
+
+    private static void ExitAlternateScreen() =>
+        AnsiConsole.Write(new ControlCode("\x1b[?1049l"));
 
     private static Layout BuildLayout()
     {
@@ -163,20 +203,28 @@ public sealed class SessionRunner(FileViewModel vm)
     {
         layout["header"].Update(new Panel(
                 new Markup($"[bold]{Commands.AppInfo.Name}[/] [dim]v{Commands.AppInfo.Version}[/] — [green]{Markup.Escape(_vm.FileName)}[/] [dim]({_vm.Kind}, {View.HumanSize(_vm.SizeBytes)})[/]"))
-            .Border(BoxBorder.Rounded));
+            .Border(BoxBorder.Rounded)
+            .Expand());
 
         layout["ops"].Update(new Panel(OpsTable(selected))
             .Border(BoxBorder.Rounded)
+            .Expand()
             .Header(" Operations ", Justify.Left));
 
         layout["footer"].Update(new Panel(new Markup(
                 $"[dim]↑/↓ move · Enter apply · Esc quit[/]   {(_dirty ? "[yellow]● modified[/]" : "[dim]○ unmodified[/]")}"))
-            .Border(BoxBorder.Rounded));
+            .Border(BoxBorder.Rounded)
+            .Expand());
     }
 
     private static Panel InfoPanel(IReadOnlyList<InfoSection> sections)
     {
         var rows = new List<IRenderable>();
+        var labelWidth = sections
+            .SelectMany(s => s.Rows)
+            .Select(r => r.Label.Length)
+            .DefaultIfEmpty(0)
+            .Max();
 
         foreach (var section in sections)
         {
@@ -185,7 +233,8 @@ public sealed class SessionRunner(FileViewModel vm)
             var table = new Table()
                 .HideHeaders()
                 .NoBorder()
-                .AddColumn(new TableColumn(string.Empty))
+                .Expand()
+                .AddColumn(new TableColumn(string.Empty) { Width = labelWidth })
                 .AddColumn(new TableColumn(string.Empty));
 
             foreach (var (label, value) in section.Rows)
@@ -199,6 +248,7 @@ public sealed class SessionRunner(FileViewModel vm)
 
         return new Panel(new Rows(rows))
             .Border(BoxBorder.Rounded)
+            .Expand()
             .Header(" Information ", Justify.Left);
     }
 
@@ -207,6 +257,7 @@ public sealed class SessionRunner(FileViewModel vm)
         var table = new Table()
             .HideHeaders()
             .NoBorder()
+            .Expand()
             .AddColumn(new TableColumn(string.Empty));
 
         for (var i = 0; i < _vm.Operations.Count; i++)
