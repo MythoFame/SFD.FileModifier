@@ -29,6 +29,7 @@ Pick one, apply it, and save a new copy.
 - Set tags (Adventure Map, Melee Map, Bot Support, etc.)
 - Toggle template flag
 - Set game modes
+- Export the embedded thumbnail (`.jpg` JPEG)
 
 **For maps only:**
 - Rename chapters
