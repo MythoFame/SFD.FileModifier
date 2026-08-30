@@ -575,7 +575,7 @@ type SfdDocument private (initialBytes: byte[]) =
         | None -> raise (SfdValidationException $"Part index {partIndex} does not exist in this file.")
         | Some part ->
             if part.Header.IsExtensionScript then
-                if source <> null && source.Contains('\u0000') then
+                if source <> null && source.Contains '\u0000' then
                     raise (SfdValidationException "Script source cannot contain null characters.")
 
                 match part.Header.ScriptSourceRange with

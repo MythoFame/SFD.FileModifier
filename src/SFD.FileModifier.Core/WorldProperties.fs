@@ -92,8 +92,8 @@ module WorldProperties =
         Array.concat
             [ SfdEncode.int32 key
               SfdEncode.int32 (typeTagOf value)
-              (match value with
-               | WpString s -> SfdEncode.string s
-               | WpFloat f -> BitConverter.GetBytes f
-               | WpInt i -> SfdEncode.int32 i
-               | WpBool b -> SfdEncode.bool b) ]
+              match value with
+              | WpString s -> SfdEncode.string s
+              | WpFloat f -> BitConverter.GetBytes f
+              | WpInt i -> SfdEncode.int32 i
+              | WpBool b -> SfdEncode.bool b ]
