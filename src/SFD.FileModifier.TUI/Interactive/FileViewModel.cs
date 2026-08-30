@@ -40,6 +40,9 @@ internal static class View
     public static string GuidOrNone(FSharpOption<Guid>? option) =>
         option is not null ? option.Value.ToString() : "[dim](none)[/]";
 
+    public static byte[]? Bytes(FSharpOption<byte[]>? option) =>
+        option is not null ? option.Value : null;
+
     public static string None(string? value) =>
         string.IsNullOrWhiteSpace(value) ? "[dim](none)[/]" : Markup.Escape(value!);
 

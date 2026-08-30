@@ -19,7 +19,7 @@ public static class MapSession
             ExpectedExtension = ".sfdm",
             SizeBytes = new FileInfo(filePath).Length,
             BuildSections = () => Sections(filePath, map),
-            Operations = Operations(map),
+            Operations = Operations(filePath, map),
             Save = path => map.Save(path),
         };
     }
@@ -94,7 +94,7 @@ public static class MapSession
                     "Multiplayer", "Optimized for 16 Players", "Customized Gameplay/Rules",
                 ];
 
-    private static IReadOnlyList<TuiOperation> Operations(SfdMap map)
+    private static IReadOnlyList<TuiOperation> Operations(string filePath, SfdMap map)
     {
         return
         [
@@ -234,6 +234,28 @@ public static class MapSession
 
                 map.SetScriptSourceAt(index, source);
                 return true;
+            }),
+            new("Export thumbnail…", () =>
+            {
+                var thumbnail = View.Bytes(map.Thumbnail);
+
+                if (thumbnail is null)
+                {
+                    AnsiConsole.MarkupLine("[yellow]This map has no thumbnail.[/]");
+                    return false;
+                }
+
+                var suggested = $"{Path.GetFileNameWithoutExtension(filePath)}_thumbnail.jpg";
+                var path = Ask.SavePath(suggested);
+
+                if (path is null)
+                {
+                    return false;
+                }
+
+                File.WriteAllBytes(path, thumbnail);
+                AnsiConsole.MarkupLine($"[green]Exported:[/] {Markup.Escape(Path.GetFullPath(path))}");
+                return false;
             }),
             new("Set camera area…", () =>
             {

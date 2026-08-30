@@ -19,7 +19,7 @@ public static class ScriptSession
             ExpectedExtension = ".sfde",
             SizeBytes = new FileInfo(filePath).Length,
             BuildSections = () => Sections(filePath, script),
-            Operations = Operations(script),
+            Operations = Operations(filePath, script),
             Save = path => script.Save(path),
         };
     }
@@ -73,7 +73,7 @@ public static class ScriptSession
         "Multiplayer", "Optimized for 16 Players", "Customized Gameplay/Rules",
     ];
 
-    private static IReadOnlyList<TuiOperation> Operations(SfdScript script)
+    private static IReadOnlyList<TuiOperation> Operations(string filePath, SfdScript script)
     {
         return
         [
@@ -160,6 +160,28 @@ public static class ScriptSession
                 }
 
                 File.WriteAllText(path, View.String(script.ScriptSource) ?? "");
+                AnsiConsole.MarkupLine($"[green]Exported:[/] {Markup.Escape(Path.GetFullPath(path))}");
+                return false;
+            }),
+            new("Export thumbnail…", () =>
+            {
+                var thumbnail = View.Bytes(script.Thumbnail);
+
+                if (thumbnail is null)
+                {
+                    AnsiConsole.MarkupLine("[yellow]This file has no thumbnail.[/]");
+                    return false;
+                }
+
+                var suggested = $"{Path.GetFileNameWithoutExtension(filePath)}_thumbnail.jpg";
+                var path = Ask.SavePath(suggested);
+
+                if (path is null)
+                {
+                    return false;
+                }
+
+                File.WriteAllBytes(path, thumbnail);
                 AnsiConsole.MarkupLine($"[green]Exported:[/] {Markup.Escape(Path.GetFullPath(path))}");
                 return false;
             }),
