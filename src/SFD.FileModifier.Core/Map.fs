@@ -37,6 +37,9 @@ type SfdMap private (document: SfdDocument) =
     /// Number of component parts (1 for regular maps, more inside campaigns).
     member _.PartCount: int = document.PartCount
 
+    /// The embedded thumbnail image (raw JPEG bytes), when present.
+    member _.Thumbnail: byte[] option = document.Thumbnail
+
     // ------------------------------------------------------------------
     // Metadata
     // ------------------------------------------------------------------

@@ -33,6 +33,9 @@ type SfdScript private (document: SfdDocument) =
     /// Number of component parts declared by the parts table (normally 1).
     member _.PartCount: int = document.PartCount
 
+    /// The embedded thumbnail image (raw JPEG bytes), when present.
+    member _.Thumbnail: byte[] option = document.Thumbnail
+
     // ------------------------------------------------------------------
     // Embedded script source
     // ------------------------------------------------------------------

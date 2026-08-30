@@ -152,6 +152,12 @@ type SfdDocument private (initialBytes: byte[]) =
 
     member _.PartCount = List.length parts
 
+    /// The raw thumbnail image (JPEG bytes of h_img) of the master part, when present.
+    member this.Thumbnail: byte[] option =
+        match this.MasterHeader.ThumbnailRange with
+        | Some range -> Some(Array.sub data range.Start (range.End - range.Start))
+        | None -> None
+
     /// Loads a map or script document from disk.
     static member Load(path: string) : SfdDocument = SfdDocument(SfdIo.readAllBytes path)
 

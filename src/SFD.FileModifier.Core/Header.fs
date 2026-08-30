@@ -48,6 +48,8 @@ type SfdHeader =
         TemplateByteRange: ByteRange option
         /// Full payload of h_pt (count field + all entries).
         PartsTableRange: ByteRange option
+        /// Full payload of h_img (length field + raw JPEG bytes).
+        ThumbnailRange: ByteRange option
         /// Offset of the first body token (first non-h section).
         HeaderEnd: int
     }
@@ -87,6 +89,7 @@ module Header =
           TagsRange = None
           TemplateByteRange = None
           PartsTableRange = None
+          ThumbnailRange = None
           HeaderEnd = 0 }
 
     let mapTypeOf (header: SfdHeader) : SfdMapCategory = SfdMapCategory.ofRaw header.MapType
@@ -143,6 +146,7 @@ module Header =
         let mutable tagsRange = None
         let mutable templateByteRange = None
         let mutable partsTableRange = None
+        let mutable thumbnailRange = None
 
         let mutable headerEnd = -1
 
@@ -258,8 +262,10 @@ module Header =
                                 $"h_img declares thumbnail size {length} which exceeds the remaining file length."
                         )
 
+                    let start = reader.Position
                     reader.Skip length
                     hasThumbnail <- true
+                    thumbnailRange <- Some(ByteRange.create start reader.Position)
 
                 | other ->
                     raise (SfdFormatException $"Error: Header information '{other.TrimEnd '\n'}' could not be loaded.")
@@ -301,4 +307,5 @@ module Header =
             TagsRange = tagsRange
             TemplateByteRange = templateByteRange
             PartsTableRange = partsTableRange
+            ThumbnailRange = thumbnailRange
             HeaderEnd = headerEnd }
