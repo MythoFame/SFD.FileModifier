@@ -2,7 +2,7 @@
 
 [![Superfighters Deluxe Logo](https://raw.githubusercontent.com/MythoFame/.github/refs/heads/master/assets/SFD_titleLoop.gif)](https://store.steampowered.com/app/855860)
 
-# Superfighters Deluxe File Modifier
+# File Modifier
 
 .NET TUI tool to modify Superfighters Deluxe maps (.sfdm) and extension scripts (.sfde)
 
